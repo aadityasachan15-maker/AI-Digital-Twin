@@ -42,8 +42,8 @@ const char* WIFI_SSID     = "LNCT_IOT_RESEARCH_SECURE";
 const char* WIFI_PASSWORD = "LNCT_CAMPUS_WIFI_KEY_2026";
 const char* MQTT_BROKER   = "10.12.4.15"; // LNCT Central Substation Edge Gateway IP
 const int   MQTT_PORT     = 1883;
-const char* NODE_ID       = "NODE-CSE-402";
-const char* BLOCK_ID      = "block-a-cse";
+const char* NODE_ID       = "NODE-CVR-F3-2";
+const char* BLOCK_ID      = "cv-raman-block";
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);

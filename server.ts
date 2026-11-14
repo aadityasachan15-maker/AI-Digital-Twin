@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import {
   LNCT_CAMPUS_BLOCKS,
   LNCT_DISTANCE_MATRIX,
+  LNCT_RGPV_TIMETABLE_DATA,
+  LNCT_RGPV_PAPER_PREDICTIONS,
   getInterBuildingDistance
 } from './src/data/lnctCampusData.ts';
 import type { CampusBlock, CampusBlockId, LiveTelemetryPacket } from './src/types/campus.ts';
@@ -13,20 +15,19 @@ import type { CampusBlock, CampusBlockId, LiveTelemetryPacket } from './src/type
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// In-memory state for live Digital Twin synchronization (hardware-ready)
 let liveBlocks: CampusBlock[] = structuredClone(LNCT_CAMPUS_BLOCKS);
 
 const livePackets: LiveTelemetryPacket[] = [
   {
     id: 'PKT-INIT-101',
     timestamp: new Date(Date.now() - 180000).toISOString(),
-    node_id: 'NODE-CSE-402',
-    block_id: 'block-a-cse',
-    room_id: 'AI_Lab_402',
-    temp_c: 23.2,
+    node_id: 'NODE-CVR-F3-2',
+    block_id: 'cv-raman-block',
+    room_id: 'F3-2 (3rd Yr CSE-AIDS)',
+    temp_c: 23.1,
     humidity: 47.5,
     light_lux: 440,
-    occupancy: 54,
+    occupancy: 58,
     ac_status: 1,
     power_kwh: 4.12,
     source: 'software_simulator',
@@ -37,9 +38,9 @@ const livePackets: LiveTelemetryPacket[] = [
   {
     id: 'PKT-INIT-102',
     timestamp: new Date(Date.now() - 90000).toISOString(),
-    node_id: 'NODE-ECE-201',
-    block_id: 'block-b-ece',
-    room_id: 'VLSI_Lab_201',
+    node_id: 'NODE-LNCTS-F2-3',
+    block_id: 'lncts-new',
+    room_id: 'F2-3 (CSE-Cyber Security)',
     temp_c: 21.8,
     humidity: 49.0,
     light_lux: 380,
@@ -48,7 +49,7 @@ const livePackets: LiveTelemetryPacket[] = [
     power_kwh: 2.85,
     source: 'software_simulator',
     anomaly_detected: true,
-    wastage_kw: 2.6,
+    wastage_kw: 2.55,
     actuation_command: 'AUTO_SHUTOFF_AC'
   }
 ];
@@ -100,18 +101,17 @@ async function startServer() {
 
   app.use(express.json());
 
-  // 1. Health & Hardware Bridge Status
   app.get('/api/v1/health', (_req: Request, res: Response) => {
     res.json({
       status: 'online',
-      service: 'LNCT Bhopal AI Digital Twin Engine',
+      service: 'LNCT Bhopal Raisen Road AI Digital Twin Engine',
       campus: 'Kalchuri Nagar, Raisen Road, Bhopal (MP)',
+      blocks_monitored: liveBlocks.length,
       hardware_bridge: 'ESP32 / Arduino HTTP + MQTT Ready',
       timestamp: new Date().toISOString()
     });
   });
 
-  // 2. Full Digital Twin Live State
   app.get('/api/v1/twin/state', (_req: Request, res: Response) => {
     const totalWastageKw = livePackets
       .filter(p => p.anomaly_detected)
@@ -129,10 +129,9 @@ async function startServer() {
     });
   });
 
-  // 3. Hardware-Ready ESP32 / Arduino / Simulator Telemetry Ingestion Endpoint
   app.post('/api/v1/telemetry/ingest', (req: Request, res: Response) => {
     const body = req.body || {};
-    const blockId = (body.block_id as CampusBlockId) || 'block-a-cse';
+    const blockId = (body.block_id as CampusBlockId) || 'cv-raman-block';
     const blockIdx = liveBlocks.findIndex(b => b.id === blockId);
 
     if (blockIdx === -1) {
@@ -146,8 +145,8 @@ async function startServer() {
     const occupancy = Math.max(0, Math.round(Number(body.occupancy ?? 0)));
     const ac_status: 0 | 1 = Number(body.ac_status ?? 0) === 1 ? 1 : 0;
     const power_kwh = Number(body.power_kwh ?? (ac_status === 1 ? 2.6 : 0.3));
-    const node_id = String(body.node_id || `NODE-${liveBlocks[blockIdx].code}-01`);
-    const room_id = String(body.room_id || 'Lab_101');
+    const node_id = String(body.node_id || `NODE-${liveBlocks[blockIdx].code}-G1`);
+    const room_id = String(body.room_id || 'F3-2');
     const source = body.source === 'esp32_hardware' ? 'esp32_hardware' : 'software_simulator';
 
     const targetBlock = liveBlocks[blockIdx];
@@ -160,10 +159,9 @@ async function startServer() {
       autoControl: targetBlock.relays.autoControl
     });
 
-    // Update physical block twin state
     targetBlock.temperatureC = Number(temp_c.toFixed(1));
     if (body.occupancy !== undefined) {
-      targetBlock.currentOccupancy = Math.min(targetBlock.maxCapacity, occupancy * 12);
+      targetBlock.currentOccupancy = Math.min(targetBlock.maxCapacity, occupancy * 16);
     }
 
     if (aiResult.anomaly_detected && targetBlock.relays.autoControl) {
@@ -209,7 +207,6 @@ async function startServer() {
     });
   });
 
-  // 4. Manual / Closed-Loop Relay Actuation Endpoint
   app.post('/api/v1/actuate/relay', (req: Request, res: Response) => {
     const { block_id, ac_on, lights_on, auto_control } = req.body || {};
     const block = liveBlocks.find(b => b.id === block_id);
@@ -233,7 +230,6 @@ async function startServer() {
     });
   });
 
-  // 5. ESP32 / Arduino HTTP Polling Endpoint
   app.get('/api/v1/actuate/commands/:blockId', (req: Request, res: Response) => {
     const block = liveBlocks.find(b => b.id === req.params.blockId);
     if (!block) {
@@ -249,7 +245,6 @@ async function startServer() {
     });
   });
 
-  // 6. Geospatial Distance Matrix Endpoint
   app.get('/api/v1/distances', (req: Request, res: Response) => {
     const from = req.query.from as CampusBlockId | undefined;
     const to = req.query.to as CampusBlockId | undefined;
@@ -258,18 +253,32 @@ async function startServer() {
       return;
     }
     res.json({
-      campus: 'LNCT Bhopal',
+      campus: 'LNCT Bhopal Raisen Road',
       matrix: LNCT_DISTANCE_MATRIX
     });
   });
 
-  // 7. Reset Live Simulator State
+  app.get('/api/v1/rgpv/timetable', (_req: Request, res: Response) => {
+    res.json({
+      university: 'RGPV Bhopal',
+      institution: 'LNCT Group of Colleges, Raisen Road, Bhopal',
+      timetable: LNCT_RGPV_TIMETABLE_DATA
+    });
+  });
+
+  app.get('/api/v1/rgpv/predictions', (_req: Request, res: Response) => {
+    res.json({
+      university: 'RGPV Bhopal',
+      scheme: 'RGPV 2026 Syllabus vs Previous Year Comparison',
+      predictions: LNCT_RGPV_PAPER_PREDICTIONS
+    });
+  });
+
   app.post('/api/v1/simulate/reset', (_req: Request, res: Response) => {
     liveBlocks = structuredClone(LNCT_CAMPUS_BLOCKS);
     res.json({ reset: true, blocks: liveBlocks });
   });
 
-  // Mount Vite middleware in development or serve built dist in production
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({

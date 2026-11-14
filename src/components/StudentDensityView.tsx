@@ -22,7 +22,7 @@ interface StudentDensityViewProps {
 }
 
 export const StudentDensityView: React.FC<StudentDensityViewProps> = ({ densityMultiplier }) => {
-  const [selectedZoneId, setSelectedZoneId] = useState<string>('ZONE-CSE-LAB402');
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('ZONE-CVR-LIB');
   const [horizonFilter, setHorizonFilter] = useState<'1h' | '2h'>('1h');
   const [setpointNotice, setSetpointNotice] = useState<string | null>(null);
 

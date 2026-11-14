@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CampusBlock, CampusBlockId } from '../types/campus';
 import {
+  LNCT_ALL_ROOM_SECTIONS,
   LNCT_DISTANCE_MATRIX,
   getInterBuildingDistance
 } from '../data/lnctCampusData';
@@ -16,7 +17,8 @@ import {
   Lightbulb,
   ExternalLink,
   Box,
-  Globe
+  Globe,
+  Layers
 } from 'lucide-react';
 
 interface CampusMapTwinProps {
@@ -41,19 +43,32 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
   const [viewMode, setViewMode] = useState<'3d' | 'satellite-matrix'>('3d');
   const [activeLayer, setActiveLayer] = useState<MapLayerMode>('density');
   const [showWireframe, setShowWireframe] = useState<boolean>(false);
-  const [routeFromId, setRouteFromId] = useState<CampusBlockId>('main-gate-transport');
-  const [routeToId, setRouteToId] = useState<CampusBlockId>('central-library');
+  const [routeFromId, setRouteFromId] = useState<CampusBlockId>('raisen-main-gate');
+  const [routeToId, setRouteToId] = useState<CampusBlockId>('cv-raman-block');
+  const [selectedFloor, setSelectedFloor] = useState<'G' | 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'Roof'>('F3');
   const [actuationMessage, setActuationMessage] = useState<string | null>(null);
 
   const selectedBlock = blocks.find(b => b.id === selectedBlockId) || blocks[0];
   const computedRoute = getInterBuildingDistance(routeFromId, routeToId);
+
+  const blockFloorSections = useMemo(() => {
+    const rooms = LNCT_ALL_ROOM_SECTIONS.filter(
+      r => r.blockId === selectedBlock.id && r.floorCode === selectedFloor
+    );
+    if (rooms.length === 0) {
+      return LNCT_ALL_ROOM_SECTIONS.filter(
+        r => r.blockId === selectedBlock.id && r.floorCode === 'G'
+      );
+    }
+    return rooms;
+  }, [selectedBlock.id, selectedFloor]);
 
   const getDynamicOccupancy = (block: CampusBlock) => {
     return Math.min(block.maxCapacity, Math.round(block.currentOccupancy * densityMultiplier));
   };
 
   const getDynamicPower = (block: CampusBlock) => {
-    if (block.id === 'substation-utility') {
+    if (block.id === 'substation-solar') {
       const solarGen = Math.round(445 * solarMultiplier);
       return { draw: block.powerDrawKw, solar: solarGen };
     }
@@ -70,17 +85,23 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
     setTimeout(() => setActuationMessage(null), 3500);
   };
 
+  const availableFloors: ('G' | 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'Roof')[] =
+    selectedBlock.floors >= 6
+      ? ['G', 'F1', 'F2', 'F3', 'F4', 'F5', 'Roof']
+      : selectedBlock.hasRoofChhatt
+      ? ['G', 'Roof']
+      : ['G'];
+
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Main 3D / Geospatial Viewport Column */}
       <div className="flex-1 bg-slate-900/90 border border-slate-800 rounded-xl p-5 flex flex-col shadow-2xl">
-        {/* Top Control Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="font-semibold text-slate-200">LNCT Bhopal Campus Matrix</span>
+              <span className="font-semibold text-slate-200">LNCT Bhopal Raisen Road Campus</span>
               <span aria-hidden="true">·</span>
-              <span>Kalchuri Nagar, Raisen Road</span>
+              <span>12 Blocks (6 Floors + Chhatt · 10 Sections/Floor)</span>
               <span aria-hidden="true">·</span>
               <span className="font-mono text-cyan-400 tabular-nums">
                 {selectedBlock.gps.lat.toFixed(5)}° N, {selectedBlock.gps.lng.toFixed(5)}° E
@@ -91,7 +112,6 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
             </h2>
           </div>
 
-          {/* Primary View Mode Switch: 3D Twin vs Satellite Matrix */}
           <div className="flex items-center gap-1 p-1 bg-slate-950/90 border border-slate-800 rounded-lg">
             <button
               onClick={() => setViewMode('3d')}
@@ -116,7 +136,6 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
 
         {/* Layer Switcher & Shortest-Path Distance Tool */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800/80 text-xs">
-          {/* Layer Switcher */}
           <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-950/80 border border-slate-800 rounded-lg">
             <button
               onClick={() => setActiveLayer('density')}
@@ -156,7 +175,6 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
             </button>
           </div>
 
-          {/* 3D Route Distance Calculator */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-slate-400 flex items-center gap-1">
               <Navigation className="w-3.5 h-3.5 text-cyan-400" />
@@ -169,7 +187,7 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
               className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
             >
               {blocks.map(b => (
-                <option key={b.id} value={b.id}>{b.code} ({b.name.split(' - ')[0]})</option>
+                <option key={b.id} value={b.id}>{b.code} ({b.name.split(' (')[0]})</option>
               ))}
             </select>
             <span className="text-slate-500">to</span>
@@ -180,7 +198,7 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
               className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
             >
               {blocks.map(b => (
-                <option key={b.id} value={b.id}>{b.code} ({b.name.split(' - ')[0]})</option>
+                <option key={b.id} value={b.id}>{b.code} ({b.name.split(' (')[0]})</option>
               ))}
             </select>
             <span className="font-mono text-cyan-300 tabular-nums px-2 py-1 bg-slate-950 rounded border border-slate-800">
@@ -199,7 +217,7 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
           </div>
         </div>
 
-        {/* Render Active Map Mode */}
+        {/* Active Map Mode */}
         {viewMode === '3d' ? (
           <Campus3DViewport
             blocks={blocks}
@@ -214,14 +232,13 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
           />
         ) : (
           <div className="flex flex-col gap-5">
-            {/* Real Satellite Coordinate Blueprint Header */}
             <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-white">
-                  LNCT Bhopal Satellite Footprint & Haversine Distance Matrix
+                  LNCT Bhopal Raisen Road Satellite Footprint & Distance Matrix
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Computed from Google Earth / OpenStreetMap GPS coordinates at Kalchuri Nagar, Raisen Road, Bhopal (23.2515° N, 77.5245° E).
+                  All 12 LNCT blocks mapped with GPS Lat/Long, floors (G to F5 + Chhatt), branches, and walking distances.
                 </p>
               </div>
               <a
@@ -235,22 +252,20 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
               </a>
             </div>
 
-            {/* Building GPS & Dimensions Table */}
             <div className="overflow-x-auto border border-slate-800 rounded-lg max-h-[240px]">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-950 text-slate-400 sticky top-0 border-b border-slate-800">
                   <tr>
                     <th className="py-2 px-3">Code & Building</th>
-                    <th className="py-2 px-3 text-right">Latitude</th>
-                    <th className="py-2 px-3 text-right">Longitude</th>
-                    <th className="py-2 px-3 text-right">Area (m²)</th>
+                    <th className="py-2 px-3">Branches Hosted</th>
                     <th className="py-2 px-3 text-right">Floors</th>
+                    <th className="py-2 px-3 text-right">Area (m²)</th>
                     <th className="py-2 px-3 text-right">Dist. from Gate</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-mono">
                   {blocks.map(b => {
-                    const distGate = getInterBuildingDistance('main-gate-transport', b.id);
+                    const distGate = getInterBuildingDistance('raisen-main-gate', b.id);
                     const isSel = b.id === selectedBlockId;
                     return (
                       <tr
@@ -264,10 +279,13 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
                           <span className="font-mono text-cyan-400 mr-2">{b.code}</span>
                           {b.name}
                         </td>
-                        <td className="py-2 px-3 text-right tabular-nums">{b.gps.lat.toFixed(5)}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{b.gps.lng.toFixed(5)}</td>
+                        <td className="py-2 px-3 font-sans text-[11px] text-slate-400 max-w-[240px] truncate">
+                          {b.branches.join(', ')}
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums">
+                          {b.floors}{b.hasRoofChhatt ? '+Chhatt' : ''}
+                        </td>
                         <td className="py-2 px-3 text-right tabular-nums">{b.areaSqm.toLocaleString('en-IN')}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{b.floors}</td>
                         <td className="py-2 px-3 text-right tabular-nums text-emerald-400">{distGate.walkingPathMeters} m</td>
                       </tr>
                     );
@@ -276,7 +294,6 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
               </table>
             </div>
 
-            {/* Pairwise Inter-Building Distance Matrix */}
             <div>
               <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                 Inter-Building Walking Distance Matrix ({LNCT_DISTANCE_MATRIX.length} Campus Routes)
@@ -316,19 +333,19 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
           </div>
         )}
 
-        {/* Quick Select Block Bar below Viewport */}
+        {/* Quick Building Switcher Strip */}
         <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-400">
-            <span>Ambient Temp: <strong className="text-slate-200 font-mono tabular-nums">{ambientTempC.toFixed(1)}°C</strong></span>
+            <span>Ambient: <strong className="text-slate-200 font-mono tabular-nums">{ambientTempC.toFixed(1)}°C</strong></span>
             <span aria-hidden="true">·</span>
-            <span>Solar Insolation: <strong className="text-amber-300 font-mono tabular-nums">{Math.round(840 * solarMultiplier)} W/m²</strong></span>
+            <span>Solar: <strong className="text-amber-300 font-mono tabular-nums">{Math.round(840 * solarMultiplier)} W/m²</strong></span>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {blocks.slice(0, 6).map(b => (
+          <div className="flex flex-wrap items-center gap-1">
+            {blocks.map(b => (
               <button
                 key={b.id}
                 onClick={() => onSelectBlock(b.id)}
-                className={`px-2 py-1 rounded text-[11px] font-mono transition-colors ${
+                className={`px-2 py-1 rounded text-[10.5px] font-mono transition-colors ${
                   b.id === selectedBlockId
                     ? 'bg-cyan-500 text-slate-950 font-semibold'
                     : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
@@ -341,12 +358,14 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
         </div>
       </div>
 
-      {/* Selected Block Inspection & Closed-Loop Relay Sidebar */}
-      <div className="w-full lg:w-88 bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-xl">
+      {/* Selected Block Inspector + 6-Floor 10-Section Matrix + Relays */}
+      <div className="w-full lg:w-92 bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-xl">
         <div>
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
             <div>
-              <span className="text-xs font-mono text-cyan-400">{selectedBlock.code} · {selectedBlock.category.toUpperCase()}</span>
+              <span className="text-xs font-mono text-cyan-400">
+                {selectedBlock.code} · {selectedBlock.floors} Floors {selectedBlock.hasRoofChhatt ? '+ Chhatt' : ''}
+              </span>
               <h3 className="text-base font-semibold text-white mt-0.5">{selectedBlock.name}</h3>
               {selectedBlock.hindiName && (
                 <span className="text-xs text-slate-400 font-sans">{selectedBlock.hindiName}</span>
@@ -361,12 +380,18 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
             </span>
           </div>
 
-          <p className="text-xs text-slate-300 leading-relaxed mb-4">
+          <p className="text-xs text-slate-300 leading-relaxed mb-3">
             {selectedBlock.description}
           </p>
 
+          {/* Branches Hosted */}
+          <div className="mb-3 text-[11px] text-slate-300 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-slate-400 font-semibold block mb-1">Branches & Academic Batches:</span>
+            <span className="text-cyan-300 font-medium">{selectedBlock.branches.join(' · ')}</span>
+          </div>
+
           {/* Key Telemetry Grid */}
-          <div className="grid grid-cols-2 gap-2.5 mb-4 text-xs">
+          <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
             <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800/80">
               <span className="text-slate-400 block text-[11px]">Live Occupancy</span>
               <span className="text-base font-semibold text-white font-mono tabular-nums">
@@ -383,51 +408,56 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
                 {getDynamicPower(selectedBlock).draw} kW
               </span>
               <span className="text-slate-400 text-[10px] block">
-                {(getDynamicPower(selectedBlock).draw / (selectedBlock.areaSqm / 1000)).toFixed(1)} W/m²
+                Temp: {selectedBlock.temperatureC}°C · CO2: {selectedBlock.co2Ppm}ppm
               </span>
-            </div>
-
-            <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800/80">
-              <span className="text-slate-400 block text-[11px]">Air Temperature</span>
-              <span className="text-base font-semibold text-cyan-300 font-mono tabular-nums">
-                {selectedBlock.temperatureC}°C
-              </span>
-              <span className="text-slate-400 text-[10px] block">GPS: {selectedBlock.gps.lat.toFixed(4)}°N</span>
-            </div>
-
-            <div className="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800/80">
-              <span className="text-slate-400 block text-[11px]">Indoor CO2</span>
-              <span className={`text-base font-semibold font-mono tabular-nums ${
-                selectedBlock.co2Ppm > 700 ? 'text-amber-400' : 'text-emerald-400'
-              }`}>
-                {selectedBlock.co2Ppm} ppm
-              </span>
-              <span className="text-slate-400 text-[10px] block">{selectedBlock.floors} Floors · {selectedBlock.areaSqm} m²</span>
             </div>
           </div>
 
-          {/* Key Labs & Facilities */}
+          {/* 6-Floor x 10-Section Explorer (G1..G10, F1-1..F5-10, Roof Chhatt) */}
           <div className="mb-4">
-            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider block mb-2">
-              Monitored Labs & Rooms
-            </span>
-            <div className="flex flex-col gap-1.5">
-              {selectedBlock.keyLabsOrRooms.map((room, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs p-2 bg-slate-950/50 rounded border border-slate-800/60">
-                  <span className="text-slate-200">{room}</span>
-                  <span className="text-[10px] text-cyan-400 font-mono">Node #{idx + 1}</span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Floor & Section Matrix</span>
+              </span>
+              <div className="flex items-center gap-1">
+                {availableFloors.map(fl => (
+                  <button
+                    key={fl}
+                    onClick={() => setSelectedFloor(fl)}
+                    className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
+                      selectedFloor === fl
+                        ? 'bg-cyan-500 text-slate-950 font-semibold'
+                        : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {fl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5 max-h-[168px] overflow-y-auto pr-1">
+              {blockFloorSections.map(sec => (
+                <div
+                  key={sec.roomId}
+                  className="p-2 bg-slate-950/70 rounded border border-slate-800/70 text-[10.5px]"
+                >
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="font-semibold text-cyan-300">{sec.roomId}</span>
+                    <span className="text-slate-400">{sec.currentOccupancy}/{sec.capacity}</span>
+                  </div>
+                  <div className="text-slate-300 truncate mt-0.5">{sec.assignedGroup}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Real Closed-Loop Hardware-Ready Relay Controls */}
+        {/* Real Closed-Loop Relay Controls */}
         <div className="pt-3 border-t border-slate-800">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-300">
-              Closed-Loop Relay Control
-            </span>
+            <span className="text-xs font-semibold text-slate-300">Closed-Loop Relay Control</span>
             <span className="text-[10px] font-mono text-emerald-400">API Ready</span>
           </div>
 
@@ -477,7 +507,7 @@ export const CampusMapTwin: React.FC<CampusMapTwinProps> = ({
 
           <div className="text-[10px] text-slate-400 text-center font-mono mt-2 flex items-center justify-center gap-1.5">
             <MapPin className="w-3 h-3 text-cyan-400" />
-            <span>ESP32 Poll: /api/v1/actuate/commands/{selectedBlock.code}</span>
+            <span>ESP32 Poll: /api/v1/actuate/commands/{selectedBlock.id}</span>
           </div>
         </div>
       </div>

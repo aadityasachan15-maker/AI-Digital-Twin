@@ -7,6 +7,7 @@ import { StudentDensityView } from './components/StudentDensityView';
 import { DatasetsDownloadView } from './components/DatasetsDownloadView';
 import { EngineeringWorkflowGuide } from './components/EngineeringWorkflowGuide';
 import { HardwareBridgeView } from './components/HardwareBridgeView';
+import { RGPVAcademicPredictorView } from './components/RGPVAcademicPredictorView';
 import { ScenarioSimulatorModal } from './components/ScenarioSimulatorModal';
 import {
   CampusBlock,
@@ -26,12 +27,12 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<MainSectionTab>('map');
-  const [energyAssetSubTab, setEnergyAssetSubTab] = useState<'energy' | 'assets'>('energy');
+  const [telemetrySubTab, setTelemetrySubTab] = useState<'energy' | 'assets' | 'density'>('energy');
   const [hardwareSubTab, setHardwareSubTab] = useState<'simulator' | 'blueprint'>('simulator');
 
   const [blocks, setBlocks] = useState<CampusBlock[]>(LNCT_CAMPUS_BLOCKS);
   const [packets, setPackets] = useState<LiveTelemetryPacket[]>([]);
-  const [selectedBlockId, setSelectedBlockId] = useState<CampusBlockId>('block-a-cse');
+  const [selectedBlockId, setSelectedBlockId] = useState<CampusBlockId>('cv-raman-block');
   const [isScenarioModalOpen, setIsScenarioModalOpen] = useState<boolean>(false);
 
   // Simulation Scenario States
@@ -102,9 +103,9 @@ export default function App() {
     handleSelectScenario(LNCT_DIGITAL_TWIN_SCENARIOS[0]);
   };
 
-  const totalOccupancy = Math.round(4450 * densityMultiplier);
-  const solarGenKw = Math.round(445 * solarMultiplier);
-  const totalDemandKw = Math.round(645 * (densityMultiplier * 0.2 + 0.8));
+  const totalOccupancy = Math.round(7200 * densityMultiplier);
+  const solarGenKw = Math.round(520 * solarMultiplier);
+  const totalDemandKw = Math.round(905 * (densityMultiplier * 0.2 + 0.8));
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
@@ -162,8 +163,8 @@ export default function App() {
         <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto pb-3 mb-4 border-b border-slate-800 text-xs">
           {[
             { id: 'map', label: '3D Campus' },
-            { id: 'energy-assets', label: 'Energy & Assets' },
-            { id: 'density', label: 'Student Density' },
+            { id: 'rgpv', label: 'RGPV & Exams' },
+            { id: 'telemetry', label: 'Energy & Density' },
             { id: 'datasets', label: 'Datasets' },
             { id: 'hardware-guide', label: 'FastAPI & ESP32' }
           ].map(t => (
@@ -192,47 +193,57 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'energy-assets' && (
+        {activeTab === 'rgpv' && (
+          <RGPVAcademicPredictorView />
+        )}
+
+        {activeTab === 'telemetry' && (
           <div className="flex flex-col gap-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-white">Campus Energy Analytics & Asset Monitoring</h2>
-                <span className="text-xs text-slate-400">Switch between 550kWp microgrid analytics and ISO 10816 predictive maintenance</span>
+                <h2 className="text-lg font-semibold text-white">Campus Energy, Asset Health & Student Density</h2>
+                <span className="text-xs text-slate-400">550kWp rooftop solar microgrid, ISO 10816 vibration analytics, and ST-GCN crowd forecasting across 12 blocks</span>
               </div>
               <div className="flex items-center gap-1 p-1 bg-slate-900 border border-slate-800 rounded-lg text-xs">
                 <button
-                  onClick={() => setEnergyAssetSubTab('energy')}
+                  onClick={() => setTelemetrySubTab('energy')}
                   className={`px-3.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
-                    energyAssetSubTab === 'energy' ? 'bg-cyan-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                    telemetrySubTab === 'energy' ? 'bg-cyan-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Energy & 550kWp Solar
+                  Energy & Solar
                 </button>
                 <button
-                  onClick={() => setEnergyAssetSubTab('assets')}
+                  onClick={() => setTelemetrySubTab('assets')}
                   className={`px-3.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
-                    energyAssetSubTab === 'assets' ? 'bg-cyan-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                    telemetrySubTab === 'assets' ? 'bg-cyan-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  Asset Health & Vibration FFT
+                  Asset Health
+                </button>
+                <button
+                  onClick={() => setTelemetrySubTab('density')}
+                  className={`px-3.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+                    telemetrySubTab === 'density' ? 'bg-cyan-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Student Density
                 </button>
               </div>
             </div>
 
-            {energyAssetSubTab === 'energy' ? (
+            {telemetrySubTab === 'energy' ? (
               <EnergyAnalyticsView
                 solarMultiplier={solarMultiplier}
                 gridAvailable={gridAvailable}
                 dgActive={dgActive}
               />
-            ) : (
+            ) : telemetrySubTab === 'assets' ? (
               <AssetMonitoringView faultAssetId={faultAssetId} />
+            ) : (
+              <StudentDensityView densityMultiplier={densityMultiplier} />
             )}
           </div>
-        )}
-
-        {activeTab === 'density' && (
-          <StudentDensityView densityMultiplier={densityMultiplier} />
         )}
 
         {activeTab === 'datasets' && (

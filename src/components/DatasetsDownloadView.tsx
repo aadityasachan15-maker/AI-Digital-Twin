@@ -7,6 +7,9 @@ import {
   LNCT_SAMPLE_IOT_TELEMETRY,
   LNCT_SPATIAL_BLUEPRINT_DATA,
   LNCT_DISTANCE_MATRIX,
+  LNCT_ALL_ROOM_SECTIONS,
+  LNCT_RGPV_TIMETABLE_DATA,
+  LNCT_RGPV_PAPER_PREDICTIONS,
   generate30DayTimetableDataset,
   convertToCSV,
   downloadFile
@@ -23,6 +26,9 @@ import {
 
 type DatasetType =
   | 'timetable30d'
+  | 'rooms'
+  | 'rgpv-tt'
+  | 'rgpv-pred'
   | 'spatial'
   | 'distances'
   | 'telemetry'
@@ -31,7 +37,7 @@ type DatasetType =
   | 'density';
 
 export const DatasetsDownloadView: React.FC = () => {
-  const [activeDataset, setActiveDataset] = useState<DatasetType>('timetable30d');
+  const [activeDataset, setActiveDataset] = useState<DatasetType>('rooms');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [rowsPerPage] = useState<number>(10);
@@ -64,11 +70,11 @@ export const DatasetsDownloadView: React.FC = () => {
 
         newRows.push({
           timestamp: ts,
-          nodeId: `NODE-${blk.code}-${(i % 12) + 1}`,
+          nodeId: `NODE-${blk.code}-F${(i % blk.floors) + 1}-${(i % 10) + 1}`,
           blockId: blk.id,
           blockName: blk.name,
-          zone: blk.keyLabsOrRooms[i % blk.keyLabsOrRooms.length] || 'General Wing',
-          floor: (i % blk.floors) + 1,
+          zone: blk.keyLabsOrRooms[i % blk.keyLabsOrRooms.length] || 'General Section',
+          floor: `F${(i % blk.floors)}`,
           tempCelsius: randTemp,
           humidityRh: Number((42 + Math.random() * 22).toFixed(1)),
           co2Ppm: randCo2,
@@ -94,20 +100,35 @@ export const DatasetsDownloadView: React.FC = () => {
   let datasetDescription = '';
   let filenamePrefix = '';
 
-  if (activeDataset === 'timetable30d') {
+  if (activeDataset === 'rooms') {
+    currentData = LNCT_ALL_ROOM_SECTIONS as unknown as Record<string, unknown>[];
+    datasetTitle = `LNCT All Blocks, 6 Floors (G to F5 + Chhatt) & 10 Sections/Floor (${LNCT_ALL_ROOM_SECTIONS.length} Rooms)`;
+    datasetDescription = 'Complete room/section inventory (G1..G10 to F5-1..F5-10) mapping CV Raman Central Library + 2nd/3rd Yr AIDS/AIML, LNCT&S Exclusive CSE-Cyber Security, LNCTE CSE-DS, LNCT Main, IT Charles Babbage, Refftronix Drone Lab & LNCP.';
+    filenamePrefix = 'lnct_all_floor_sections_480plus';
+  } else if (activeDataset === 'timetable30d') {
     currentData = timetableData as unknown as Record<string, unknown>[];
     datasetTitle = `LNCT ${timetableDays}-Day Timetable & Wastage Anomaly Dataset (${timetableData.length.toLocaleString('en-IN')} rows)`;
-    datasetDescription = 'Hourly room-level dataset across CS Block, ECE, Library & Auditorium with 9 AM-5 PM schedule occupancy and night-time AC/Light wastage anomalies.';
+    datasetDescription = 'Hourly room-level dataset across LNCT Main, CV Raman, LNCT&S, LNCTE, Charles Babbage IT, Drone Lab & LNCP with college-hour occupancy and AC wastage flags.';
     filenamePrefix = 'lnct_30day_iot_dataset';
+  } else if (activeDataset === 'rgpv-tt') {
+    currentData = LNCT_RGPV_TIMETABLE_DATA as unknown as Record<string, unknown>[];
+    datasetTitle = 'LNCT RGPV Timetable, Practicals, Mid-Sems & Final Exams Load';
+    datasetDescription = 'Maps RGPV theory classes, practicals, Mid-Sem I/II, and final exams across exact LNCT blocks, floors, and branches.';
+    filenamePrefix = 'lnct_rgpv_timetable_exams';
+  } else if (activeDataset === 'rgpv-pred') {
+    currentData = LNCT_RGPV_PAPER_PREDICTIONS as unknown as Record<string, unknown>[];
+    datasetTitle = 'RGPV Syllabus Comparison & Exam Paper Predictions';
+    datasetDescription = 'Compares previous year vs current RGPV syllabus changes across CSE, AIML, AIDS, Cyber Security, DS, EC, EEE, Mechanical & Pharmacy with predicted 70-mark exam questions.';
+    filenamePrefix = 'lnct_rgpv_paper_predictions';
   } else if (activeDataset === 'spatial') {
     currentData = LNCT_SPATIAL_BLUEPRINT_DATA as unknown as Record<string, unknown>[];
-    datasetTitle = 'LNCT Bhopal Building Spatial & GPS Blueprint';
-    datasetDescription = 'Exact GPS Latitude/Longitude, built-up m² area, floors, seating capacities, and distances from Main Gate and Central Library.';
+    datasetTitle = 'LNCT Raisen Road Building Spatial & GPS Blueprint';
+    datasetDescription = 'Exact GPS Latitude/Longitude, 6-floor + Chhatt structure, branch distribution, and distances from Main Gate & Sir CV Raman Central Library.';
     filenamePrefix = 'lnct_buildings_spatial';
   } else if (activeDataset === 'distances') {
     currentData = LNCT_DISTANCE_MATRIX as unknown as Record<string, unknown>[];
     datasetTitle = 'LNCT Inter-Building Distance & Walking Time Matrix';
-    datasetDescription = 'Pairwise Haversine straight-line and campus walkway distances (meters) plus walking duration between every LNCT campus block.';
+    datasetDescription = 'Pairwise Haversine straight-line and campus walkway distances (meters) plus walking duration between all 12 LNCT Raisen Road blocks.';
     filenamePrefix = 'lnct_distance_matrix';
   } else if (activeDataset === 'telemetry') {
     currentData = customTelemetryRows as unknown as Record<string, unknown>[];
@@ -161,18 +182,17 @@ export const DatasetsDownloadView: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Top Banner with Dataset Selector */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <Database className="w-3.5 h-3.5 text-cyan-400" />
-              <span>LNCT Bhopal Open Project Datasets</span>
+              <span>LNCT Bhopal Raisen Road Datasets</span>
               <span aria-hidden="true">·</span>
-              <span>Spatial GPS + Distance Matrix + 30-Day Timetable IoT Data</span>
+              <span>480+ Floor Sections + RGPV Exams + GPS Distances + 30-Day IoT</span>
             </div>
             <h2 className="text-lg font-semibold text-white tracking-tight mt-0.5">
-              Downloadable Campus Datasets Center (CSV & JSON)
+              Downloadable Campus & RGPV Datasets Center (CSV & JSON)
             </h2>
           </div>
 
@@ -201,21 +221,23 @@ export const DatasetsDownloadView: React.FC = () => {
           </div>
         </div>
 
-        {/* Dataset Segmented Tabs */}
         <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-950 rounded-lg border border-slate-800">
           {[
-            { id: 'timetable30d', label: '01. 30-Day Timetable & Wastage', count: `${timetableData.length} rows` },
-            { id: 'spatial', label: '02. Campus GPS & Blueprint', count: `${LNCT_SPATIAL_BLUEPRINT_DATA.length} blocks` },
-            { id: 'distances', label: '03. Distance Matrix', count: `${LNCT_DISTANCE_MATRIX.length} routes` },
-            { id: 'telemetry', label: '04. High-Freq IoT Telemetry', count: `${customTelemetryRows.length} rows` },
-            { id: 'assets', label: '05. Critical Assets', count: `${LNCT_CAMPUS_ASSETS.length} assets` },
-            { id: 'energy', label: '06. 550kWp Solar Balance', count: `${LNCT_ENERGY_TIMESERIES_24H.length} slots` },
-            { id: 'density', label: '07. Student Density', count: `${LNCT_STUDENT_DENSITY_ZONES.length} zones` }
+            { id: 'rooms', label: '01. Floor & Section Rooms', count: `${LNCT_ALL_ROOM_SECTIONS.length}` },
+            { id: 'timetable30d', label: '02. 30-Day IoT & Wastage', count: `${timetableData.length}` },
+            { id: 'rgpv-tt', label: '03. RGPV Timetable & Exams', count: `${LNCT_RGPV_TIMETABLE_DATA.length}` },
+            { id: 'rgpv-pred', label: '04. RGPV Paper Predictor', count: `${LNCT_RGPV_PAPER_PREDICTIONS.length}` },
+            { id: 'spatial', label: '05. Campus GPS Blueprint', count: `${LNCT_SPATIAL_BLUEPRINT_DATA.length}` },
+            { id: 'distances', label: '06. Distance Matrix', count: `${LNCT_DISTANCE_MATRIX.length}` },
+            { id: 'telemetry', label: '07. High-Freq Telemetry', count: `${customTelemetryRows.length}` },
+            { id: 'assets', label: '08. Assets', count: `${LNCT_CAMPUS_ASSETS.length}` },
+            { id: 'energy', label: '09. Solar Profile', count: `${LNCT_ENERGY_TIMESERIES_24H.length}` },
+            { id: 'density', label: '10. Student Density', count: `${LNCT_STUDENT_DENSITY_ZONES.length}` }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => { setActiveDataset(tab.id as DatasetType); setCurrentPage(1); setSearchTerm(''); }}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 activeDataset === tab.id ? 'bg-cyan-500 text-slate-950 font-semibold shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -225,7 +247,6 @@ export const DatasetsDownloadView: React.FC = () => {
           ))}
         </div>
 
-        {/* Dataset Metadata Box */}
         <div className="mt-4 p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div>
             <strong className="text-white block font-medium">{datasetTitle}</strong>
@@ -234,7 +255,7 @@ export const DatasetsDownloadView: React.FC = () => {
 
           {activeDataset === 'timetable30d' && (
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-xs">Simulation Horizon:</span>
+              <span className="text-slate-400 text-xs">Horizon:</span>
               {[7, 15, 30].map(d => (
                 <button
                   key={d}
@@ -275,7 +296,7 @@ export const DatasetsDownloadView: React.FC = () => {
         </div>
       </div>
 
-      {/* Interactive Table with Search & Pagination */}
+      {/* Table Viewport */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div className="relative w-full sm:w-80">
@@ -284,7 +305,7 @@ export const DatasetsDownloadView: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              placeholder="Search in dataset records..."
+              placeholder="Filter records (e.g. Cyber Security, CV Raman, F3-2)..."
               className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
             />
           </div>
@@ -320,7 +341,7 @@ export const DatasetsDownloadView: React.FC = () => {
                         }`}
                       >
                         {typeof val === 'object' && val !== null
-                          ? 'Object/Array'
+                          ? JSON.stringify(val).slice(0, 60) + '...'
                           : isWastageHit
                           ? '1 (WASTAGE)'
                           : String(val)}
@@ -353,33 +374,6 @@ export const DatasetsDownloadView: React.FC = () => {
               Next
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Dataset Schema & Python Pandas Integration */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-md">
-          <h4 className="text-sm font-semibold text-white mb-2">External Benchmark Datasets (Kaggle / UCI)</h4>
-          <p className="text-xs text-slate-400 leading-relaxed mb-3">
-            In addition to the LNCT Bhopal datasets above, you can benchmark your AI models against these standard open datasets:
-          </p>
-          <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
-            <li><strong>ASHRAE Great Energy Predictor III (Kaggle):</strong> Building chiller & meter hourly energy benchmark.</li>
-            <li><strong>UCI Occupancy Detection Dataset:</strong> Ground-truth room occupancy vs Light, CO2, Temp & Humidity.</li>
-          </ul>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-md">
-          <h4 className="text-sm font-semibold text-white mb-2">Load Directly in Python / Pandas</h4>
-          <pre className="p-3 bg-slate-950 rounded-lg border border-slate-800 text-[11px] font-mono text-cyan-300 overflow-x-auto">
-{`import pandas as pd
-
-df = pd.read_csv('${filenamePrefix}.csv')
-print(df.head())
-# Detect empty-room AC wastage automatically:
-if 'Wastage_Flag' in df.columns:
-    print("Wastage events:", df['Wastage_Flag'].sum())`}
-          </pre>
         </div>
       </div>
     </div>

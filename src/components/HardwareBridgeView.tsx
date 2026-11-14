@@ -50,9 +50,9 @@ app.add_middleware(
 )
 
 class TelemetryIngest(BaseModel):
-    node_id: str = Field(default="NODE-CSE-402")
-    block_id: str = Field(default="block-a-cse")
-    room_id: str = Field(default="AI_Lab_402")
+    node_id: str = Field(default="NODE-CVR-F3-2")
+    block_id: str = Field(default="cv-raman-block")
+    room_id: str = Field(default="F3-2 (3rd Yr CSE-AIDS)")
     temp_c: float = Field(ge=-10, le=70)
     humidity: float = Field(ge=0, le=100)
     light_lux: int = Field(ge=0, le=5000)
@@ -67,18 +67,20 @@ class RelayCommand(BaseModel):
     lights_on: Optional[bool] = None
     auto_control: Optional[bool] = None
 
-# In-memory block relay states (replace with MongoDB/PostgreSQL for persistence)
+# In-memory block relay states across all 12 LNCT Raisen Road blocks
 BLOCK_RELAYS: Dict[str, Dict[str, bool]] = {
-    "block-a-cse": {"acOn": True, "lightsOn": True, "autoControl": True},
-    "block-b-ece": {"acOn": True, "lightsOn": True, "autoControl": True},
-    "block-c-mech": {"acOn": True, "lightsOn": True, "autoControl": True},
-    "auditorium": {"acOn": True, "lightsOn": True, "autoControl": True},
-    "central-library": {"acOn": True, "lightsOn": True, "autoControl": True},
-    "rnd-incubation": {"acOn": True, "lightsOn": True, "autoControl": True},
-    "substation-utility": {"acOn": True, "lightsOn": True, "autoControl": False},
-    "hostel-cluster": {"acOn": True, "lightsOn": True, "autoControl": True},
-    "sports-complex": {"acOn": False, "lightsOn": True, "autoControl": True},
-    "main-gate-transport": {"acOn": True, "lightsOn": True, "autoControl": False},
+    "lnct-main": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "cv-raman-block": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "refftronix-drone-lab": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "charles-babbage-it": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "lncts-old": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "lncts-new": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "lncte-building": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "lnctu-building": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "lncp-pharmacy": {"acOn": True, "lightsOn": True, "autoControl": True},
+    "lnct-main-canteen": {"acOn": False, "lightsOn": True, "autoControl": True},
+    "substation-solar": {"acOn": True, "lightsOn": True, "autoControl": False},
+    "raisen-main-gate": {"acOn": True, "lightsOn": True, "autoControl": False},
 }
 
 TELEMETRY_LOG: List[dict] = []
@@ -212,9 +214,9 @@ const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 // Point to your laptop's local IP running FastAPI (port 8000) or Node server (port 3000)
 const char* SERVER_BASE   = "http://192.168.1.100:8000";
-const char* BLOCK_ID      = "block-a-cse";
-const char* ROOM_ID       = "AI_Lab_402";
-const char* NODE_ID       = "NODE-CSE-402";
+const char* BLOCK_ID      = "cv-raman-block";
+const char* ROOM_ID       = "F3-2 (3rd Yr CSE-AIDS)";
+const char* NODE_ID       = "NODE-CVR-F3-2";
 
 #define DHTPIN   4
 #define DHTTYPE  DHT11
@@ -309,8 +311,8 @@ export const HardwareBridgeView: React.FC<HardwareBridgeViewProps> = ({
   packets,
   onRefreshState
 }) => {
-  const [blockId, setBlockId] = useState<CampusBlockId>('block-a-cse');
-  const [roomId, setRoomId] = useState<string>('AI_Lab_402');
+  const [blockId, setBlockId] = useState<CampusBlockId>('cv-raman-block');
+  const [roomId, setRoomId] = useState<string>('F3-2 (3rd Yr CSE-AIDS)');
   const [occupancy, setOccupancy] = useState<number>(0);
   const [tempC, setTempC] = useState<number>(22.4);
   const [lightLux, setLightLux] = useState<number>(420);

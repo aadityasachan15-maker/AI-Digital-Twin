@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sliders } from 'lucide-react';
 
-export type MainSectionTab = 'map' | 'energy-assets' | 'density' | 'datasets' | 'hardware-guide';
+export type MainSectionTab = 'map' | 'rgpv' | 'telemetry' | 'datasets' | 'hardware-guide';
 
 interface HeaderProps {
   activeTab: MainSectionTab;
@@ -35,20 +35,20 @@ export const Header: React.FC<HeaderProps> = ({
           3D Campus
         </button>
         <button
-          onClick={() => onSelectTab('energy-assets')}
+          onClick={() => onSelectTab('rgpv')}
           className={`hover:text-white transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'energy-assets' ? 'text-cyan-400 font-semibold' : ''
+            activeTab === 'rgpv' ? 'text-cyan-400 font-semibold' : ''
           }`}
         >
-          Energy & Assets
+          RGPV & Exams
         </button>
         <button
-          onClick={() => onSelectTab('density')}
+          onClick={() => onSelectTab('telemetry')}
           className={`hover:text-white transition-colors whitespace-nowrap shrink-0 ${
-            activeTab === 'density' ? 'text-cyan-400 font-semibold' : ''
+            activeTab === 'telemetry' ? 'text-cyan-400 font-semibold' : ''
           }`}
         >
-          Student Density
+          Energy & Density
         </button>
         <button
           onClick={() => onSelectTab('datasets')}

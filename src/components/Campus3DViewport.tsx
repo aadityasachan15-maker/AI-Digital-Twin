@@ -44,7 +44,7 @@ function getLayerColorHex(
   }
   if (layer === 'energy') {
     if (!block.relays.acOn && !block.relays.lightsOn) return 0x334155; // powered down / idle
-    if (block.id === 'substation-utility') return 0xeab308;
+    if (block.id === 'substation-solar') return 0xeab308;
     if (block.powerDrawKw > 120) return 0xf97316;
     if (block.powerDrawKw > 60) return 0x3b82f6;
     return 0x6366f1;
@@ -295,11 +295,12 @@ export const Campus3DViewport: React.FC<Campus3DViewportProps> = ({
       scene.add(trim);
       roofTrimMeshesRef.current.set(block.id, trim);
 
-      // Rooftop Solar PV Arrays on Block A, Auditorium & Substation
+      // Rooftop Chhatt Solar PV Arrays on LNCT Main, CV Raman, LNCT&S New & Substation
       if (
-        block.id === 'block-a-cse' ||
-        block.id === 'auditorium' ||
-        block.id === 'substation-utility'
+        block.id === 'lnct-main' ||
+        block.id === 'cv-raman-block' ||
+        block.id === 'lncts-new' ||
+        block.id === 'substation-solar'
       ) {
         const panelRows = 3;
         for (let r = 0; r < panelRows; r++) {
@@ -318,6 +319,20 @@ export const Campus3DViewport: React.FC<Campus3DViewportProps> = ({
           panel.rotation.x = 0.22; // Bhopal latitude ~23.2° optimal solar tilt
           scene.add(panel);
         }
+      }
+
+      // Refftronix Drone Lab netted flight cage beside CV Raman Block
+      if (block.id === 'refftronix-drone-lab') {
+        const cageGeo = new THREE.BoxGeometry(bWidth * 0.85, 3.0, bDepth * 0.85);
+        const cageMat = new THREE.MeshStandardMaterial({
+          color: 0x38bdf8,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.55
+        });
+        const cage = new THREE.Mesh(cageGeo, cageMat);
+        cage.position.set(pos.x, bHeight + 1.6, pos.z);
+        scene.add(cage);
       }
 
       // Floor slab accent lines for multi-story architectural realism

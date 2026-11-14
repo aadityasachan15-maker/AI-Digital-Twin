@@ -1,23 +1,45 @@
 export type CampusBlockId =
-  | 'block-a-cse'
-  | 'block-b-ece'
-  | 'block-c-mech'
-  | 'auditorium'
-  | 'central-library'
-  | 'rnd-incubation'
-  | 'substation-utility'
-  | 'hostel-cluster'
-  | 'sports-complex'
-  | 'main-gate-transport';
+  | 'lnct-main'
+  | 'cv-raman-block'
+  | 'refftronix-drone-lab'
+  | 'charles-babbage-it'
+  | 'lncts-old'
+  | 'lncts-new'
+  | 'lncte-building'
+  | 'lnctu-building'
+  | 'lncp-pharmacy'
+  | 'lnct-main-canteen'
+  | 'substation-solar'
+  | 'raisen-main-gate';
+
+export interface FloorSectionRoom {
+  roomId: string;
+  blockId: CampusBlockId;
+  blockName: string;
+  floorCode: 'G' | 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'Roof';
+  sectionNumber: number;
+  assignedGroup: string;
+  roomType: 'Classroom' | 'Computer Lab' | 'Central Library' | 'Workshop/Lab' | 'Drone Lab' | 'Pharmacy Lab' | 'Canteen/Utility' | 'Rooftop Chhatt';
+  capacity: number;
+  currentOccupancy: number;
+  tempC: number;
+  acOn: boolean;
+  lightsOn: boolean;
+  iotNodeId: string;
+}
 
 export interface CampusBlock {
   id: CampusBlockId;
   name: string;
   hindiName?: string;
   code: string;
-  category: 'academic' | 'utility' | 'facility' | 'residential';
+  category: 'academic' | 'utility' | 'facility' | 'lab';
   areaSqm: number;
   floors: number;
+  hasRoofChhatt: boolean;
+  sectionsPerFloor: number;
+  branches: string[];
+  specialFacilities: string[];
   gps: { lat: number; lng: number };
   coordinates: { x: number; y: number; width: number; height: number; depth: number };
   activeSensors: number;
@@ -49,7 +71,9 @@ export interface BuildingDistanceEntry {
 export interface RoomScheduleIoTRecord {
   Timestamp: string;
   Block_Name: string;
-  Room_ID: string;
+  Floor: string;
+  Section_Room: string;
+  Branch_Year: string;
   Temperature_C: number;
   Humidity: number;
   Light_Lux: number;
@@ -57,6 +81,44 @@ export interface RoomScheduleIoTRecord {
   AC_Status: 0 | 1;
   Power_Usage_kWh: number;
   Wastage_Flag: 0 | 1;
+}
+
+export interface RGPVTimetableRecord {
+  id: string;
+  branch: string;
+  yearSem: string;
+  buildingId: CampusBlockId;
+  buildingName: string;
+  floorSections: string;
+  subjectCode: string;
+  subjectName: string;
+  eventType: 'Theory Class' | 'RGPV Practical' | 'Mid-Sem I' | 'Mid-Sem II' | 'RGPV Final Exam';
+  dayOrDate: string;
+  timeSlot: string;
+  expectedStudentLoad: number;
+  predictedPowerKw: number;
+}
+
+export interface RGPVPaperPredictionRecord {
+  id: string;
+  branch: string;
+  buildingExclusiveNote: string;
+  semester: string;
+  subjectCode: string;
+  subjectName: string;
+  rgpvPaperFormat: string;
+  unitNumber: string;
+  unitTitle: string;
+  prevYearSyllabusStatus: 'Retained (Core)' | 'Newly Added 2026' | 'Modified Weightage' | 'High-Frequency Repeat';
+  pastAppearances: string;
+  predictedProbabilityPct: number;
+  predictedMarksOutOf70: number;
+  predictedQuestions: {
+    part: 'Part A (2M Short)' | 'Part B (7M Analytical)' | 'Part C (14M Long)';
+    question: string;
+    confidencePct: number;
+  }[];
+  syllabusComparisonNotes: string;
 }
 
 export interface LiveTelemetryPacket {
@@ -83,7 +145,7 @@ export interface IoTTelemetryRecord {
   blockId: CampusBlockId;
   blockName: string;
   zone: string;
-  floor: number;
+  floor: string;
   tempCelsius: number;
   humidityRh: number;
   co2Ppm: number;
