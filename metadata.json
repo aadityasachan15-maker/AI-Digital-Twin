@@ -1,0 +1,6 @@
+{
+  "name": "LNCT Bhopal AI Digital Twin - Smart Campus Platform",
+  "description": "Cyber-Physical AI Digital Twin for LNCT College Bhopal featuring real-time IoT asset health, energy analytics, student density prediction, and engineering workflow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
